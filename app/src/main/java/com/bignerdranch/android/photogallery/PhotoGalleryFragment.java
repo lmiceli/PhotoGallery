@@ -12,6 +12,7 @@ import android.widget.TextView;
 
 import com.bignerdranch.android.photogallery.model.GalleryItem;
 import com.bignerdranch.android.photogallery.network.FlickrFetchr;
+import com.bignerdranch.android.photogallery.view.OnVerticalScrollListener;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,6 +25,7 @@ public class PhotoGalleryFragment extends Fragment {
     private static final String TAG = "PhotoGalleryFragment";
     private RecyclerView mPhotoRecyclerView;
     private List<GalleryItem> mItems = new ArrayList<>();
+    private int mCurrentPage;
 
     public static PhotoGalleryFragment newInstance() {
         return new PhotoGalleryFragment();
@@ -33,7 +35,9 @@ public class PhotoGalleryFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
-        new FetchItemsTask().execute();
+        mCurrentPage = 1;
+        new FetchItemsTask().execute(mCurrentPage);
+
     }
 
     @Override
@@ -43,6 +47,32 @@ public class PhotoGalleryFragment extends Fragment {
 
         mPhotoRecyclerView = (RecyclerView) v.findViewById(R.id.fragment_photo_gallery_recycler_view);
         mPhotoRecyclerView.setLayoutManager(new GridLayoutManager(getActivity(), 3));
+
+        mPhotoRecyclerView.addOnScrollListener(new OnVerticalScrollListener() {
+            @Override
+            public void onScrolledUp() {
+                //
+            }
+
+            @Override
+            public void onScrolledDown() {
+
+            }
+
+            @Override
+            public void onScrolledToTop() {
+//                if (mCurrentPage > 1) {
+//                    mCurrentPage--;
+//                    new FetchItemsTask().execute(mCurrentPage);
+//                }
+            }
+
+            @Override
+            public void onScrolledToBottom() {
+                mCurrentPage++;
+                new FetchItemsTask().execute(mCurrentPage);
+            }
+        });
 
         setupAdapter();
 
@@ -55,16 +85,18 @@ public class PhotoGalleryFragment extends Fragment {
         }
     }
 
-    private class FetchItemsTask extends AsyncTask<Void, Void, List<GalleryItem>> {
+    private class FetchItemsTask extends AsyncTask<Integer, Void, List<GalleryItem>> {
 
         @Override
-        protected List<GalleryItem> doInBackground(Void... params) {
-            return new FlickrFetchr().fetchItemsUsingGson();
+        protected List<GalleryItem> doInBackground(Integer... params) {
+            return new FlickrFetchr().fetchItems(params[0]);
         }
 
         @Override
         protected void onPostExecute(List<GalleryItem> items) {
-            mItems = items;
+            // mItems = items;
+            // challenge pagination while adding data
+            mItems.addAll(items);
             setupAdapter();
         }
     }
