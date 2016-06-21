@@ -181,8 +181,12 @@ public class PhotoGalleryFragment extends Fragment {
             // plus the previous ones are already stored in cache.
             // we will call one by one as it goes smoother.
             // first ten are loaded already, no need to preload
-            if (position > 9) {
-                return mItems.subList(position +1, Math.min(position + 2, mItems.size()-1));
+            if (position % 7 == 0) {
+                try {
+                    return mItems.subList(position, Math.min(position + 14, mItems.size()-1));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
             return new ArrayList<>();
         }
