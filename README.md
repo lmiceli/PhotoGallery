@@ -1,1 +1,3 @@
-#app that displays public images from Flickr, based on BigNerdRanch book
+### Photo Gallery
+
+app that displays public images from Flickr, based on BigNerdRanch book
