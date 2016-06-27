@@ -24,6 +24,56 @@ public class FlickrFetchr {
 
     private static final String API_KEY = "c4319665608a3f214acb9e2d1f5a97d2";
 
+    private static final String FETCH_RECENTS_METHOD = "flickr.photos.getRecent";
+    private static final String SEARCH_METHOD = "flickr.photos.search";
+    private static final Uri ENDPOINT = Uri
+            .parse("https://api.flickr.com/services/rest/")
+            .buildUpon()
+            .appendQueryParameter("api_key", API_KEY)
+            .appendQueryParameter("format", "json")
+            .appendQueryParameter("nojsoncallback", "1")
+            .appendQueryParameter("extras", "url_s")
+            .build();
+
+    public List<GalleryItem> fetchRecentPhotos(int page) {
+        String url = buildUrl(FETCH_RECENTS_METHOD, null, page);
+        return downloadGalleryItems(url);
+    }
+
+    public List<GalleryItem> searchPhotos(String query, int page) {
+        String url = buildUrl(SEARCH_METHOD, query, page);
+        return downloadGalleryItems(url);
+    }
+
+    private String buildUrl(String method, String query, int page) {
+        Uri.Builder uriBuilder = ENDPOINT.buildUpon()
+                .appendQueryParameter("method", method)
+                .appendQueryParameter("page", String.valueOf(page));
+        if (method.equals(SEARCH_METHOD)) {
+            uriBuilder.appendQueryParameter("text", query);
+        }
+        return uriBuilder.build().toString();
+    }
+
+    public List<GalleryItem> downloadGalleryItems(String url) {
+
+        List<GalleryItem> items = new ArrayList<>();
+
+        try {
+            String jsonString = getUrlString(url);
+
+            items.addAll(parseItems(jsonString));
+
+            Log.i(TAG, "Received JSON: " + jsonString);
+        } catch (IOException ioe) {
+            Log.e(TAG, "Failed to fetch items", ioe);
+        } catch (JSONException jsone) {
+            Log.e(TAG, "Failed to parse JSON", jsone);
+        }
+
+        return items;
+    }
+
     public List<GalleryItem> fetchItems(int page) {
 
         List<GalleryItem> items = new ArrayList<>();

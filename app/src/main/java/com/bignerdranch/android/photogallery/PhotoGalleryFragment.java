@@ -5,8 +5,12 @@ import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.SearchView;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
@@ -37,8 +41,9 @@ public class PhotoGalleryFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
+        setHasOptionsMenu(true);
         mCurrentPage = 1;
-        new FetchItemsTask().execute(mCurrentPage);
+        updateItems();
 
         Log.i(TAG, "Background thread started");
 
@@ -74,7 +79,7 @@ public class PhotoGalleryFragment extends Fragment {
             @Override
             public void onScrolledToBottom() {
                 mCurrentPage++;
-                new FetchItemsTask().execute(mCurrentPage);
+                new FetchItemsTask(null, mCurrentPage).execute();
             }
         });
 
@@ -83,25 +88,86 @@ public class PhotoGalleryFragment extends Fragment {
         return v;
     }
 
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater menuInflater) {
+        super.onCreateOptionsMenu(menu, menuInflater);
+        menuInflater.inflate(R.menu.fragment_photo_gallery, menu);
+        MenuItem searchItem = menu.findItem(R.id.menu_item_search);
+        final SearchView searchView = (SearchView) searchItem.getActionView();
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String s) {
+                Log.d(TAG, "QueryTextSubmit: " + s);
+                QueryPreferences.setStoredQuery(getActivity(), s);
+                updateItems();
+                return true;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String s) {
+                Log.d(TAG, "QueryTextChange: " + s);
+                return false;
+            }
+        });
+
+        searchView.setOnSearchClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String query = QueryPreferences.getStoredQuery(getActivity());
+                searchView.setQuery(query, false);
+            }
+        });
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.menu_item_clear:
+                QueryPreferences.setStoredQuery(getActivity(), null);
+                updateItems();
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+    }
+
+    private void updateItems() {
+        String query = QueryPreferences.getStoredQuery(getActivity());
+        new FetchItemsTask(query, mCurrentPage).execute();
+    }
+
     private void setupAdapter() {
         if (isAdded()) {
             mPhotoRecyclerView.setAdapter(new PhotoAdapter(mItems));
         }
     }
 
-    private class FetchItemsTask extends AsyncTask<Integer, Void, List<GalleryItem>> {
+    private class FetchItemsTask extends AsyncTask<Void, Void, List<GalleryItem>> {
+
+        private final String mQuery;
+        private final int mCurrentPage;
+
+        public FetchItemsTask(String query, int currentPage) {
+            mQuery = query;
+            mCurrentPage = currentPage;
+        }
 
         @Override
-        protected List<GalleryItem> doInBackground(Integer... params) {
-            return new FlickrFetchr().fetchItems(params[0]);
+        protected List<GalleryItem> doInBackground(Void... params) {
+
+            if (mQuery == null) {
+                return new FlickrFetchr().fetchRecentPhotos(mCurrentPage);
+            } else {
+                return new FlickrFetchr().searchPhotos(mQuery, mCurrentPage);
+            }
+
         }
 
         @Override
         protected void onPostExecute(List<GalleryItem> items) {
-            // mItems = items;
+            mItems = items;
             // challenge pagination while adding data
-            mItems.addAll(items);
-
+            // mItems.addAll(items);
             setupAdapter();
         }
     }
@@ -153,5 +219,5 @@ public class PhotoGalleryFragment extends Fragment {
             return mGalleryItems.size();
         }
     }
-    
+
 }
